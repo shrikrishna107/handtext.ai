@@ -3,7 +3,6 @@
 import React from 'react';
 
 const fonts = [
-  // Original fonts
   { name: 'Patrick Hand', value: 'Patrick Hand' },
   { name: 'Comic Neue', value: 'Comic Neue' },
   { name: 'Homemade Apple', value: 'Homemade Apple' },
@@ -16,8 +15,6 @@ const fonts = [
   { name: 'Great Vibes', value: 'Great Vibes' },
   { name: 'Pacifico', value: 'Pacifico' },
   { name: 'Alex Brush', value: 'Alex Brush' },
-  
-  // Additional fonts
   { name: 'La Belle Aurore', value: 'La Belle Aurore' },
   { name: 'Short Stack', value: 'Short Stack' },
   { name: 'Crafty Girls', value: 'Crafty Girls' },
@@ -31,32 +28,73 @@ const fonts = [
 ];
 
 const FontSelector = ({ selectedFont, onFontChange }) => {
-  // Static sample text for all font previews
   const sampleText = "Select this font to preview it. This is a sample text that will be displayed in the selected font.";
-  
+
   return (
     <div className="mb-6">
-      <label htmlFor="fontSelector" className="block mb-2 font-medium">
+      <label
+        htmlFor="fontSelector"
+        className="block mb-2 font-medium text-base md:text-lg"
+        style={{ color: '#EAEAEA' }}
+      >
         Choose a handwriting font:
       </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-4">
-        {fonts.map((font) => (
-          <div
-            key={font.value}
-            className={`p-2 md:p-4 border rounded-md cursor-pointer hover:bg-gray-700 transition-colors ${
-              selectedFont === font.value ? 'border-blue-500 bg-black' : 'border-gray-300'
-            }`}
-            onClick={() => onFontChange(font.value)}
-          >
-            <p className="text-base md:text-lg mb-1 md:mb-2 font-medium truncate">{font.name}</p>
-            <p 
-              className="text-sm md:text-base overflow-hidden" 
-              style={{ fontFamily: font.value }}
+      <div
+        className="
+          grid 
+          grid-cols-1 
+          xs:grid-cols-2 
+          sm:grid-cols-2 
+          md:grid-cols-3 
+          lg:grid-cols-4 
+          xl:grid-cols-5 
+          gap-2 
+          md:gap-4
+        "
+      >
+        {fonts.map((font) => {
+          const isSelected = selectedFont === font.value;
+          return (
+            <div
+              key={font.value}
+              className={`
+                p-2 sm:p-3 md:p-4 rounded-md cursor-pointer transition-all duration-200
+                ${isSelected ? '' : 'border'}
+              `}
+              style={{
+                backgroundColor: isSelected ? '#FF6F61' : '#0F3460',
+                color: isSelected ? '#FFFFFF' : '#EAEAEA',
+                border: isSelected ? `2px solid #FF6F61` : `2px solid #00ADB5`,
+                boxShadow: isSelected
+                  ? '0 0 10px rgba(255, 111, 97, 0.6)'
+                  : '0 0 0 transparent',
+                outline: isSelected ? '2px solid #FF6F61' : 'none',
+                fontWeight: isSelected ? 700 : 500,
+              }}
+              onClick={() => onFontChange(font.value)}
+              tabIndex={0}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') onFontChange(font.value);
+              }}
+              role="button"
+              aria-pressed={isSelected}
             >
-              {sampleText}
-            </p>
-          </div>
-        ))}
+              <p className="text-sm sm:text-base md:text-lg mb-1 md:mb-2 font-medium truncate">
+                {font.name}
+              </p>
+              <p
+                className="text-xs sm:text-sm md:text-base overflow-hidden"
+                style={{
+                  fontFamily: font.value,
+                  minHeight: '2.5em',
+                  color: isSelected ? '#FFFFFF' : '#EAEAEA',
+                }}
+              >
+                {sampleText}
+              </p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
