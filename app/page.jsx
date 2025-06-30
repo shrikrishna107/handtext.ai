@@ -2,7 +2,128 @@
 
 import { useState, useRef } from 'react';
 import FontSelector from './components/FontSelector';
+import Image from 'next/image';
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
+async function performOCRwithGemini(base64Image) {
+  // IMPORTANT: Canvas automatically injects the API key into the __api_key global variable.
+  // We explicitly use it here to ensure it's passed correctly.
+  const apiKey = typeof __api_key !== 'undefined' ? __api_key : 'AIzaSyCvOI_ixBQSAgQr2gspKlPgPdq6ehyPkew'; // Access the API key provided by Canvas
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+  
+  // Detect image type for correct mimeType
+  const matches = base64Image.match(/^data:image\/(png|jpeg|jpg);base64,/);
+  const mimeType = matches ? `image/${matches[1] === 'jpg' ? 'jpeg' : matches[1]}` : 'image/png';
+  const base64Data = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
+
+  console.log("Attempting OCR with Gemini Vision API...");
+  console.log("MIME Type:", mimeType);
+  console.log("Base64 Data Snippet (first 100 chars):", base64Data.substring(0, 100) + '...');
+  console.log("Using API Key (first 5 chars):", apiKey.substring(0, 5) + '...'); // Log a snippet of the key for confirmation (don't log full key)
+
+
+  const requestBody = {
+    contents: [
+      {
+        parts: [
+          {
+            text: "Extract all readable text from this image. Only return the text, nothing else.",
+          },
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Data,
+            },
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    console.log("Gemini API Full Response:", data); // Log the full response for debugging
+
+    if (!response.ok) {
+      // If the response status is not OK, throw an error with more details
+      const errorMessage = data.error?.message || `API error: ${response.status} ${response.statusText}`;
+      throw new Error(`Failed to perform OCR: ${errorMessage}`);
+    }
+
+    // Gemini's response format: data.candidates[0].content.parts[0].text
+    const extractedText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!extractedText || extractedText.trim() === '') {
+        // If Gemini returns no text or empty text, indicate that no text was detected
+        return ''; // Return empty string, let the calling function handle the "no text detected" error
+    }
+
+    window.alert(`OCR completed successfully! Extracted text having: ${extractedText.length} characters.`);
+
+    return extractedText;
+
+  } catch (error) {
+    console.error('Error during Gemini OCR API call:', error);
+    throw new Error(`OCR API communication error: ${error.message || 'An unknown error occurred.'}`);
+  }
+}
+
+function FilePicker({ onTextExtracted, setError, setIsLoading }) {
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('Only JPG and PNG images are supported.');
+      return;
+    }
+    setError('');
+    setIsLoading(true);
+    try {
+      const base64 = await readFileAsDataURL(file);
+      const text = await performOCRwithGemini(base64);
+      if (!text.trim()) {
+        throw new Error('No readable text detected in the image. Please try a different image.');
+      }
+      onTextExtracted(text);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to extract text from image.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="mb-3 sm:mb-4 md:mb-5 lg:mb-6">
+      <label
+        htmlFor="imageUpload"
+        className="block mb-1 sm:mb-2 font-medium text-sm sm:text-base"
+        style={{ color: '#EAEAEA' }}
+      >
+        Or upload an image (JPG/PNG):
+      </label>
+      <input
+        id="imageUpload"
+        type="file"
+        accept="image/png,image/jpeg"
+        onChange={handleFileChange}
+        className="block w-full text-sm text-gray-200 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0F3460] file:text-[#EAEAEA] hover:file:bg-[#00ADB5] transition-all"
+      />
+    </div>
+  );
+}
 export default function Home() {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
@@ -65,6 +186,12 @@ export default function Home() {
       >
         Handwriting Text Converter
       </h1>
+
+      <FilePicker 
+        onTextExtracted={setInputText}
+        setError={setError}
+        setIsLoading={setIsLoading}
+      />
       
       <form onSubmit={handleSubmit} className="mb-4 sm:mb-5 md:mb-6 lg:mb-8">
         <div className="mb-3 sm:mb-4 md:mb-5 lg:mb-6">
